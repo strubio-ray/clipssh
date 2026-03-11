@@ -13,7 +13,7 @@ When using Claude Code (or similar tools) over SSH, you can't paste images from 
 ## Install
 
 ```bash
-# macOS via Homebrew (private tap, requires HOMEBREW_GITHUB_API_TOKEN)
+# macOS via Homebrew
 brew install strubio-ray/tap/clipssh
 ```
 

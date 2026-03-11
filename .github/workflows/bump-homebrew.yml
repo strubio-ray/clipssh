@@ -17,4 +17,3 @@ jobs:
           download-url: https://github.com/${{ github.repository }}/archive/refs/tags/${{ github.ref_name }}.tar.gz
         env:
           COMMITTER_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          GITHUB_TOKEN: ${{ github.token }}
