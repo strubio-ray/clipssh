@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
 # clipssh - Send clipboard screenshot to remote SSH host
-# https://github.com/samuellawrentz/clipssh
+# https://github.com/strubio-ray/clipssh
 #
 
 set -e
 
-VERSION="1.0.0"
+VERSION="%%VERSION%%"
 
 # Colors
 RED='\033[0;31m'
