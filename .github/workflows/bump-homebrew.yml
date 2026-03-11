@@ -8,15 +8,6 @@ jobs:
   homebrew:
     runs-on: ubuntu-latest
     steps:
-      - name: Compute tarball sha256
-        id: sha256
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          url="https://github.com/${{ github.repository }}/archive/refs/tags/${{ github.ref_name }}.tar.gz"
-          sha=$(curl -sL -H "Authorization: token $GH_TOKEN" "$url" | shasum -a 256 | cut -d' ' -f1)
-          echo "hash=$sha" >> "$GITHUB_OUTPUT"
-
       - uses: mislav/bump-homebrew-formula-action@v3
         with:
           formula-name: clipssh
@@ -24,6 +15,6 @@ jobs:
           push-to: strubio-ray/homebrew-tap
           create-pullrequest: false
           download-url: https://github.com/${{ github.repository }}/archive/refs/tags/${{ github.ref_name }}.tar.gz
-          download-sha256: ${{ steps.sha256.outputs.hash }}
         env:
           COMMITTER_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
