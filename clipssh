@@ -192,10 +192,12 @@ fi
 # Generate remote path (env var > config file > default)
 REMOTE_DIR="${CLIPSSH_REMOTE_DIR:-$(config_get remote_dir)}"
 REMOTE_DIR="${REMOTE_DIR:-/tmp}"
+# Replace leading ~ with $HOME so the remote shell expands it
+REMOTE_DIR="${REMOTE_DIR/#\~/\$HOME}"
 REMOTE_PATH="${REMOTE_DIR}/clipboard-$(date +%s).png"
 
 # Upload via SSH
-if ! cat "$TEMP_FILE" | ssh "$HOST" "mkdir -p '$REMOTE_DIR' && cat > '$REMOTE_PATH'" 2>/dev/null; then
+if ! cat "$TEMP_FILE" | ssh "$HOST" "mkdir -p \"$REMOTE_DIR\" && cat > \"$REMOTE_PATH\"" 2>/dev/null; then
     error "Failed to upload to $HOST"
 fi
 
