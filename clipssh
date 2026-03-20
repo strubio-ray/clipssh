@@ -153,10 +153,9 @@ fi
 
 # Check OS and clipboard tool
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    if ! command -v pngpaste &> /dev/null; then
-        error "pngpaste not found. Install with: brew install pngpaste"
+    if ! command -v clipssh-paste &> /dev/null; then
+        error "clipssh-paste not found. Install with: brew install strubio-ray/tap/clipssh"
     fi
-    PASTE_CMD="pngpaste"
 elif [[ "$OSTYPE" == "linux"* ]]; then
     if command -v xclip &> /dev/null; then
         PASTE_CMD="xclip -selection clipboard -target image/png -o"
@@ -175,9 +174,17 @@ trap "rm -f $TEMP_FILE" EXIT
 
 # Extract image from clipboard
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    if ! pngpaste "$TEMP_FILE" 2>/dev/null; then
-        error "No image in clipboard. Take a screenshot first (Cmd+Shift+Ctrl+4)"
+    STDERR_FILE=$(mktemp)
+    trap "rm -f $TEMP_FILE $STDERR_FILE" EXIT
+    clipssh-paste > "$TEMP_FILE" 2>"$STDERR_FILE"
+    EXIT_CODE=$?
+
+    if [[ $EXIT_CODE -ne 0 ]]; then
+        error "$(tail -1 "$STDERR_FILE")"
     fi
+
+    SOURCE_LINE=$(tail -1 "$STDERR_FILE")
+    rm -f "$STDERR_FILE"
 else
     if ! $PASTE_CMD > "$TEMP_FILE" 2>/dev/null; then
         error "No image in clipboard. Take a screenshot first"
