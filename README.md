@@ -1,6 +1,6 @@
 # clipssh
 
-Send clipboard screenshots to remote SSH hosts. Perfect for pasting images into terminal tools like Claude Code running over SSH.
+Send clipboard images to remote SSH hosts. Perfect for pasting images into terminal tools like Claude Code running over SSH.
 
 ## The Problem
 
@@ -8,7 +8,7 @@ When using Claude Code (or similar tools) over SSH, you can't paste images from 
 
 ## The Solution
 
-`clipssh` extracts the screenshot from your local clipboard, uploads it to the remote server, and copies the file path to your clipboard. Just paste the path into Claude Code and it auto-attaches the image.
+`clipssh` extracts the image from your local clipboard, uploads it to the remote server, and copies the file path to your clipboard. Just paste the path into Claude Code and it auto-attaches the image.
 
 ## Install
 
@@ -20,15 +20,20 @@ brew install strubio-ray/tap/clipssh
 ## Usage
 
 ```bash
-# Take a screenshot to clipboard
-# macOS: Cmd+Shift+Ctrl+4 (select area, copies to clipboard)
-
-# Upload to remote host
+# Upload a clipboard image to the remote host
 clipssh user@myserver
 
 # Paste the path into Claude Code on the remote
 # The image will auto-attach
 ```
+
+### Supported Clipboard Sources (macOS)
+
+- **Screenshot to clipboard** — `Cmd+Shift+Ctrl+4` (select area)
+- **Copy file in Finder** — right-click an image file → Copy
+- **Copy file path** — right-click an image file → Copy Path
+
+All three methods are detected automatically.
 
 ## Configuration
 
@@ -62,8 +67,8 @@ CLIPSSH_REMOTE_DIR=/custom/path clipssh
 ## Requirements
 
 **macOS:**
-- `pngpaste` - Install with `brew install pngpaste`
 - SSH access to remote host
+- `clipssh-paste` (bundled with `brew install strubio-ray/tap/clipssh`)
 
 **Linux:**
 - `xclip` (X11) or `wl-clipboard` (Wayland)
@@ -71,10 +76,11 @@ CLIPSSH_REMOTE_DIR=/custom/path clipssh
 
 ## How It Works
 
-1. Extracts PNG image from your local clipboard
-2. Uploads to `<remote-dir>/clipboard-<timestamp>.png` on remote host via SSH (default: `/tmp`)
-3. Copies the remote path to your clipboard
-4. You paste the path into Claude Code, which reads and displays the image
+1. Detects clipboard content: raw image data, copied file reference, or copied file path
+2. Extracts and converts to PNG
+3. Uploads to `<remote-dir>/<filename>.png` on remote host via SSH
+4. Copies the remote path to your clipboard
+5. You paste the path into Claude Code, which reads and displays the image
 
 ## License
 
