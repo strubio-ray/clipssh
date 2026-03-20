@@ -128,6 +128,8 @@ cd /vm-clipssh/.homebrew-tap && git push origin main
 
 **Important:** Confirm with the user before pushing. This modifies the shared homebrew-tap repository.
 
+**Warning:** Between this push and the version tag push (see Deployment Notes), `brew install clipssh` will be broken because the `v1.1.2` tarball does not contain `swift/ClipsshPaste.swift`. These two steps should be done in quick succession.
+
 ---
 
 ### Deployment Notes (Post-Plan)
