@@ -77,3 +77,46 @@ func tryRawImageData() -> Bool {
 }
 
 let _ = tryRawImageData()
+
+func isImageExtension(_ ext: String) -> Bool {
+    return supportedExtensions.contains(ext.lowercased())
+}
+
+func fileToStdoutPNG(path: String, sourcePrefix: String) -> Never {
+    let url = URL(fileURLWithPath: path)
+    guard let image = NSImage(contentsOf: url) else {
+        exitWithError("Failed to convert image to PNG")
+    }
+    guard let tiffData = image.tiffRepresentation,
+          let imageRep = NSBitmapImageRep(data: tiffData),
+          let pngData = imageRep.representation(using: .png, properties: [:]) else {
+        exitWithError("Failed to convert image to PNG")
+    }
+    FileHandle.standardOutput.write(pngData)
+    printError("\(sourcePrefix)\(path)")
+    exit(0)
+}
+
+// --- Detection 2: File references ---
+func tryFileReference() -> Bool {
+    // Prefer modern public.file-url, fall back to legacy NSFilenamesPboardType
+    if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL],
+       let fileURL = urls.first {
+        let path = fileURL.path
+        let resolvedPath = (try? URL(fileURLWithPath: path).resolvingSymlinksInPath().path) ?? path
+        let ext = URL(fileURLWithPath: resolvedPath).pathExtension
+
+        guard FileManager.default.fileExists(atPath: resolvedPath) else {
+            exitWithError("File not found: \(resolvedPath)")
+        }
+
+        guard isImageExtension(ext) else {
+            exitWithError("Copied file is not a supported image type: \(resolvedPath)", code: 2)
+        }
+
+        fileToStdoutPNG(path: resolvedPath, sourcePrefix: "source:file:")
+    }
+    return false
+}
+
+let _ = tryFileReference()
