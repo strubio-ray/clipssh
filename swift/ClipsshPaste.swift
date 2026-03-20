@@ -136,9 +136,15 @@ func tryTextPath() {
     }
 
     // Must be a single line
-    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    var trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.contains("\n") else {
         return
+    }
+
+    // Strip surrounding quotes (Finder's "Copy as Pathname" wraps paths in single quotes)
+    if (trimmed.hasPrefix("'") && trimmed.hasSuffix("'")) ||
+       (trimmed.hasPrefix("\"") && trimmed.hasSuffix("\"")) {
+        trimmed = String(trimmed.dropFirst().dropLast())
     }
 
     // Must start with / or ~
