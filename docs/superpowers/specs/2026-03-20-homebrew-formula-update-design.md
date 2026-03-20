@@ -21,8 +21,11 @@ class Clipssh < Formula
   depends_on :macos
 
   def install
-    # Compile Swift CLI helper
-    system "swiftc", "-O", "-o", "clipssh-paste", "swift/ClipsshPaste.swift"
+    # Embed version in Swift source before compiling
+    inreplace "swift/ClipsshPaste.swift", 'let version = "1.0.0"', "let version = \"#{version}\""
+
+    # Compile Swift CLI helper (explicit AppKit link for robustness)
+    system "swiftc", "-O", "-framework", "AppKit", "-o", "clipssh-paste", "swift/ClipsshPaste.swift"
 
     # Embed version in shell script
     inreplace "clipssh", "%%VERSION%%", version.to_s
@@ -34,7 +37,7 @@ class Clipssh < Formula
 
   test do
     assert_match "clipssh #{version}", shell_output("#{bin}/clipssh --version")
-    assert_match "clipssh-paste", shell_output("#{bin}/clipssh-paste --version")
+    assert_match "clipssh-paste #{version}", shell_output("#{bin}/clipssh-paste --version")
   end
 end
 ```
@@ -42,10 +45,11 @@ end
 ## Changes from Current Formula
 
 - **Removed:** `depends_on "pngpaste"`
-- **Updated:** `desc` from "screenshots" to "images"
-- **Added:** `system "swiftc"` to compile `clipssh-paste` from source
+- **Updated:** `desc` from "screenshots" to "images" (the tool now handles copied files and paths, not just screenshots)
+- **Added:** `inreplace` on Swift source to inject formula version into `clipssh-paste` (prevents version mismatch between the two binaries)
+- **Added:** `system "swiftc"` with `-framework AppKit` to compile `clipssh-paste` from source
 - **Added:** `bin.install "clipssh-paste"` to install the compiled binary
-- **Added:** Test assertion for `clipssh-paste --version`
+- **Added:** Test assertion for `clipssh-paste #{version}` (verifies version injection worked)
 
 ## What Stays the Same
 
@@ -56,7 +60,7 @@ end
 
 ## Swift Compilation
 
-`swiftc` is provided by Xcode Command Line Tools, which Homebrew already requires on macOS. No explicit Swift dependency declaration is needed.
+`swiftc` is provided by Xcode Command Line Tools, which Homebrew already requires on macOS. No explicit Swift dependency declaration is needed. The `-framework AppKit` flag is included for robustness, ensuring the framework is linked even in toolchain configurations where auto-linking might not work.
 
 ## Deployment Sequence
 
@@ -66,7 +70,7 @@ end
 4. The auto-bump action updates `url` and `sha256` in the formula
 5. Future version bumps continue to work automatically
 
-Note: Steps 2 and 3-4 must be coordinated. The formula should be updated before or at the same time as the version tag, so that the new tarball (containing `swift/ClipsshPaste.swift`) is fetched by a formula that knows how to compile it.
+**Important:** Step 2 must happen before step 3. The formula logic change must be in place before the version tag is pushed, so the auto-bump action updates a formula that already knows how to compile the Swift source from the new tarball.
 
 ## Validation
 
