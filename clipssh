@@ -176,15 +176,12 @@ trap "rm -f $TEMP_FILE" EXIT
 if [[ "$OSTYPE" == "darwin"* ]]; then
     STDERR_FILE=$(mktemp)
     trap "rm -f $TEMP_FILE $STDERR_FILE" EXIT
-    clipssh-paste > "$TEMP_FILE" 2>"$STDERR_FILE"
-    EXIT_CODE=$?
-
-    if [[ $EXIT_CODE -ne 0 ]]; then
+    if clipssh-paste > "$TEMP_FILE" 2>"$STDERR_FILE"; then
+        SOURCE_LINE=$(tail -1 "$STDERR_FILE")
+        rm -f "$STDERR_FILE"
+    else
         error "$(tail -1 "$STDERR_FILE")"
     fi
-
-    SOURCE_LINE=$(tail -1 "$STDERR_FILE")
-    rm -f "$STDERR_FILE"
 else
     if ! $PASTE_CMD > "$TEMP_FILE" 2>/dev/null; then
         error "No image in clipboard. Take a screenshot first"
