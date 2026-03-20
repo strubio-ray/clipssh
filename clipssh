@@ -196,15 +196,33 @@ if [[ ! -s "$TEMP_FILE" ]]; then
     error "Clipboard image is empty"
 fi
 
+# Determine remote filename
+TIMESTAMP=$(date +%s)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    case "$SOURCE_LINE" in
+        source:file:*|source:path:*)
+            ORIGINAL_PATH="${SOURCE_LINE#source:file:}"
+            ORIGINAL_PATH="${ORIGINAL_PATH#source:path:}"
+            ORIGINAL_NAME=$(basename "$ORIGINAL_PATH")
+            ORIGINAL_BASE="${ORIGINAL_NAME%.*}"
+            REMOTE_FILENAME="${ORIGINAL_BASE}-${TIMESTAMP}.png"
+            ;;
+        *)
+            REMOTE_FILENAME="clipboard-${TIMESTAMP}.png"
+            ;;
+    esac
+else
+    REMOTE_FILENAME="clipboard-${TIMESTAMP}.png"
+fi
+
 # Generate remote path (env var > config file > default)
 REMOTE_DIR="${CLIPSSH_REMOTE_DIR:-$(config_get remote_dir)}"
 REMOTE_DIR="${REMOTE_DIR:-/tmp}"
-TIMESTAMP=$(date +%s)
 
 # Upload via SSH (~ is expanded by the remote shell using eval echo)
 REMOTE_PATH=$(cat "$TEMP_FILE" | ssh "$HOST" "
     DIR=\$(eval echo \"$REMOTE_DIR\")
-    PATH_FULL=\"\$DIR/clipboard-${TIMESTAMP}.png\"
+    PATH_FULL=\"\$DIR/${REMOTE_FILENAME}\"
     mkdir -p \"\$DIR\" && cat > \"\$PATH_FULL\" && echo \"\$PATH_FULL\"
 " 2>/dev/null) || true
 
