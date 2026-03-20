@@ -50,12 +50,42 @@ let supportedExtensions = Set(["png", "jpg", "jpeg", "gif", "tiff", "bmp", "webp
 let pasteboard = NSPasteboard.general
 
 // Check if pasteboard has any content at all
-if pasteboard.pasteboardItems == nil || pasteboard.pasteboardItems?.isEmpty == true {
+let items = pasteboard.pasteboardItems
+if items == nil || items?.isEmpty == true {
     exitWithError("No content found in clipboard")
 }
 
+func isImageExtension(_ ext: String) -> Bool {
+    return supportedExtensions.contains(ext.lowercased())
+}
+
+func writePNGToStdout(_ pngData: Data, source: String) -> Never {
+    FileHandle.standardOutput.write(pngData)
+    printError(source)
+    exit(0)
+}
+
+func convertToPNG(_ data: Data) -> Data? {
+    guard let imageRep = NSBitmapImageRep(data: data),
+          let pngData = imageRep.representation(using: .png, properties: [:]) else {
+        return nil
+    }
+    return pngData
+}
+
+func fileToStdoutPNG(path: String, sourcePrefix: String) -> Never {
+    let url = URL(fileURLWithPath: path)
+    guard let data = try? Data(contentsOf: url) else {
+        exitWithError("Failed to read image file: \(path)")
+    }
+    guard let pngData = convertToPNG(data) else {
+        exitWithError("Failed to convert image to PNG")
+    }
+    writePNGToStdout(pngData, source: "\(sourcePrefix)\(path)")
+}
+
 // --- Detection 1: Raw image data ---
-func tryRawImageData() -> Bool {
+func tryRawImageData() {
     // Check for PNG data first, then TIFF (macOS screenshots are often TIFF internally)
     let imageTypes: [NSPasteboard.PasteboardType] = [
         .png,
@@ -64,51 +94,28 @@ func tryRawImageData() -> Bool {
 
     for type in imageTypes {
         if let data = pasteboard.data(forType: type) {
-            guard let imageRep = NSBitmapImageRep(data: data),
-                  let pngData = imageRep.representation(using: .png, properties: [:]) else {
+            if type == .png {
+                // PNG data can be written directly without re-encoding
+                writePNGToStdout(data, source: "source:image")
+            }
+            guard let pngData = convertToPNG(data) else {
                 continue
             }
-            FileHandle.standardOutput.write(pngData)
-            printError("source:image")
-            exit(0)
+            writePNGToStdout(pngData, source: "source:image")
         }
     }
-    return false
 }
 
-let _ = tryRawImageData()
-
-func isImageExtension(_ ext: String) -> Bool {
-    return supportedExtensions.contains(ext.lowercased())
-}
-
-func fileToStdoutPNG(path: String, sourcePrefix: String) -> Never {
-    let url = URL(fileURLWithPath: path)
-    guard let image = NSImage(contentsOf: url) else {
-        exitWithError("Failed to convert image to PNG")
-    }
-    guard let tiffData = image.tiffRepresentation,
-          let imageRep = NSBitmapImageRep(data: tiffData),
-          let pngData = imageRep.representation(using: .png, properties: [:]) else {
-        exitWithError("Failed to convert image to PNG")
-    }
-    FileHandle.standardOutput.write(pngData)
-    printError("\(sourcePrefix)\(path)")
-    exit(0)
-}
+tryRawImageData()
 
 // --- Detection 2: File references ---
-func tryFileReference() -> Bool {
+func tryFileReference() {
     // Prefer modern public.file-url, fall back to legacy NSFilenamesPboardType
     if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL],
        let fileURL = urls.first {
-        let path = fileURL.path
-        let resolvedPath = (try? URL(fileURLWithPath: path).resolvingSymlinksInPath().path) ?? path
-        let ext = URL(fileURLWithPath: resolvedPath).pathExtension
-
-        guard FileManager.default.fileExists(atPath: resolvedPath) else {
-            exitWithError("File not found: \(resolvedPath)")
-        }
+        let resolved = fileURL.resolvingSymlinksInPath()
+        let resolvedPath = resolved.path
+        let ext = resolved.pathExtension
 
         guard isImageExtension(ext) else {
             exitWithError("Copied file is not a supported image type: \(resolvedPath)", code: 2)
@@ -116,26 +123,25 @@ func tryFileReference() -> Bool {
 
         fileToStdoutPNG(path: resolvedPath, sourcePrefix: "source:file:")
     }
-    return false
 }
 
-let _ = tryFileReference()
+tryFileReference()
 
 // --- Detection 3: Text file path ---
-func tryTextPath() -> Bool {
+func tryTextPath() {
     guard let text = pasteboard.string(forType: .string) else {
-        return false
+        return
     }
 
     // Must be a single line
     let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.contains("\n") else {
-        return false
+        return
     }
 
     // Must start with / or ~
     guard trimmed.hasPrefix("/") || trimmed.hasPrefix("~") else {
-        return false
+        return
     }
 
     // Expand ~ to home directory
@@ -146,17 +152,13 @@ func tryTextPath() -> Bool {
         if !ext.isEmpty {
             exitWithError("Path is not a supported image type: \(expanded)", code: 2)
         }
-        return false
-    }
-
-    guard FileManager.default.fileExists(atPath: expanded) else {
-        exitWithError("File not found: \(expanded)")
+        return
     }
 
     fileToStdoutPNG(path: expanded, sourcePrefix: "source:path:")
 }
 
-let _ = tryTextPath()
+tryTextPath()
 
 // --- No match ---
 exitWithError("No content found in clipboard")

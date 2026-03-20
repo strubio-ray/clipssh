@@ -197,9 +197,14 @@ fi
 TIMESTAMP=$(date +%s)
 if [[ "$OSTYPE" == "darwin"* ]]; then
     case "$SOURCE_LINE" in
-        source:file:*|source:path:*)
+        source:file:*)
             ORIGINAL_PATH="${SOURCE_LINE#source:file:}"
-            ORIGINAL_PATH="${ORIGINAL_PATH#source:path:}"
+            ORIGINAL_NAME=$(basename "$ORIGINAL_PATH")
+            ORIGINAL_BASE="${ORIGINAL_NAME%.*}"
+            REMOTE_FILENAME="${ORIGINAL_BASE}-${TIMESTAMP}.png"
+            ;;
+        source:path:*)
+            ORIGINAL_PATH="${SOURCE_LINE#source:path:}"
             ORIGINAL_NAME=$(basename "$ORIGINAL_PATH")
             ORIGINAL_BASE="${ORIGINAL_NAME%.*}"
             REMOTE_FILENAME="${ORIGINAL_BASE}-${TIMESTAMP}.png"
@@ -217,11 +222,11 @@ REMOTE_DIR="${CLIPSSH_REMOTE_DIR:-$(config_get remote_dir)}"
 REMOTE_DIR="${REMOTE_DIR:-/tmp}"
 
 # Upload via SSH (~ is expanded by the remote shell using eval echo)
-REMOTE_PATH=$(cat "$TEMP_FILE" | ssh "$HOST" "
+REMOTE_PATH=$(ssh "$HOST" "
     DIR=\$(eval echo \"$REMOTE_DIR\")
     PATH_FULL=\"\$DIR/${REMOTE_FILENAME}\"
     mkdir -p \"\$DIR\" && cat > \"\$PATH_FULL\" && echo \"\$PATH_FULL\"
-" 2>/dev/null) || true
+" < "$TEMP_FILE" 2>/dev/null) || true
 
 if [[ -z "$REMOTE_PATH" ]]; then
     error "Failed to upload to $HOST"
