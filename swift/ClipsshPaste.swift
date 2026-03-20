@@ -53,3 +53,27 @@ let pasteboard = NSPasteboard.general
 if pasteboard.pasteboardItems == nil || pasteboard.pasteboardItems?.isEmpty == true {
     exitWithError("No content found in clipboard")
 }
+
+// --- Detection 1: Raw image data ---
+func tryRawImageData() -> Bool {
+    // Check for PNG data first, then TIFF (macOS screenshots are often TIFF internally)
+    let imageTypes: [NSPasteboard.PasteboardType] = [
+        .png,
+        .tiff,
+    ]
+
+    for type in imageTypes {
+        if let data = pasteboard.data(forType: type) {
+            guard let imageRep = NSBitmapImageRep(data: data),
+                  let pngData = imageRep.representation(using: .png, properties: [:]) else {
+                continue
+            }
+            FileHandle.standardOutput.write(pngData)
+            printError("source:image")
+            exit(0)
+        }
+    }
+    return false
+}
+
+let _ = tryRawImageData()
