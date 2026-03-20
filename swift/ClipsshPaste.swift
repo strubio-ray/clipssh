@@ -120,3 +120,43 @@ func tryFileReference() -> Bool {
 }
 
 let _ = tryFileReference()
+
+// --- Detection 3: Text file path ---
+func tryTextPath() -> Bool {
+    guard let text = pasteboard.string(forType: .string) else {
+        return false
+    }
+
+    // Must be a single line
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.contains("\n") else {
+        return false
+    }
+
+    // Must start with / or ~
+    guard trimmed.hasPrefix("/") || trimmed.hasPrefix("~") else {
+        return false
+    }
+
+    // Expand ~ to home directory
+    let expanded = NSString(string: trimmed).expandingTildeInPath
+    let ext = URL(fileURLWithPath: expanded).pathExtension
+
+    guard isImageExtension(ext) else {
+        if !ext.isEmpty {
+            exitWithError("Path is not a supported image type: \(expanded)", code: 2)
+        }
+        return false
+    }
+
+    guard FileManager.default.fileExists(atPath: expanded) else {
+        exitWithError("File not found: \(expanded)")
+    }
+
+    fileToStdoutPNG(path: expanded, sourcePrefix: "source:path:")
+}
+
+let _ = tryTextPath()
+
+// --- No match ---
+exitWithError("No content found in clipboard")
